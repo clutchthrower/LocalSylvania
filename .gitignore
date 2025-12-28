@@ -1,0 +1,14 @@
+*~
+__pycache__
+.tox
+tuyadebug/
+.pre-commit-config.yaml
+
+# Test scripts and sensitive data
+test_*.py
+*_test.py
+VERIFICATION_REPORT.md
+GITHUB_SETUP.md
+.env
+.env.*
+*.log
