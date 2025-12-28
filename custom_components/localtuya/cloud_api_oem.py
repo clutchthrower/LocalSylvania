@@ -1,4 +1,5 @@
 """Cloud API implementation for Tuya OEM API."""
+import asyncio
 import functools
 import logging
 import hmac
@@ -160,6 +161,8 @@ class TuyaCloudApiOEM(CloudApi):
             raise InvalidUserSession(result["errorMsg"])
         if result["errorCode"] == "USER_PASSWD_WRONG":
             raise InvalidAuthentication(result["errorMsg"])
+        if result["errorCode"] == "REQUEST_TOO_FREQUENTLY_PLEASE_TRY_AGAIN_LATER":
+            raise RateLimitError(result["errorMsg"])
         raise ValueError(f"{result['errorMsg']} ({result['errorCode']})")
 
     @staticmethod
@@ -242,7 +245,29 @@ class TuyaCloudApiOEM(CloudApi):
         return "ok"
 
     async def _async_authenticate(self):
-        return await self._invoke_handle_error(self._async_login)
+        """Authenticate with retry logic for rate limiting."""
+        max_retries = 3
+        base_delay = 5  # seconds
+
+        for attempt in range(max_retries):
+            try:
+                await self._async_login()
+                return "ok"
+            except RateLimitError as err:
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)  # Exponential backoff
+                    _LOGGER.warning(
+                        "Rate limit exceeded, retrying in %d seconds (attempt %d/%d)",
+                        delay, attempt + 1, max_retries
+                    )
+                    await asyncio.sleep(delay)
+                else:
+                    _LOGGER.error("Rate limit exceeded after %d attempts", max_retries)
+                    return str(err)
+            except ValueError as err:
+                return str(err)
+
+        return "ok"
 
     async def _async_fetch_device_list(self):
         return await self._invoke_handle_error(self._async_list_devices)
@@ -254,3 +279,7 @@ class InvalidUserSession(ValueError):
 
 class InvalidAuthentication(ValueError):
     """Invalid authentication error."""
+
+
+class RateLimitError(ValueError):
+    """Rate limit exceeded error."""
