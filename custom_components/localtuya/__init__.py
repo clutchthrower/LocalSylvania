@@ -246,9 +246,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     tuya_api = CloudApi.create_api(hass, entry.data)
 
     # Authenticate and fetch devices if cloud is configured
+    _LOGGER.info("Authenticating with cloud API...")
     res = await tuya_api.async_authenticate()
     if res == "ok":
-        await tuya_api.async_fetch_device_list()
+        _LOGGER.info("Cloud API authentication succeeded")
+        _LOGGER.info("Fetching device list from cloud...")
+        fetch_res = await tuya_api.async_fetch_device_list()
+        if fetch_res == "ok":
+            device_count = len(tuya_api.device_list)
+            _LOGGER.info(
+                "Successfully fetched %d device(s) from cloud API", device_count
+            )
+            if device_count > 0:
+                _LOGGER.debug("Cloud devices: %s", list(tuya_api.device_list.keys()))
+        else:
+            _LOGGER.error("Failed to fetch device list: %s", fetch_res)
+    else:
+        _LOGGER.warning("Cloud API authentication failed: %s", res)
 
     hass.data[DOMAIN][DATA_CLOUD] = tuya_api
 

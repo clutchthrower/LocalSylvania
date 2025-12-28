@@ -516,10 +516,20 @@ class LocalTuyaOptionsFlowHandler(config_entries.OptionsFlow):
             if dev["gwId"] not in self.config_entry.data[CONF_DEVICES]
         }
 
+        # Add cloud devices that weren't discovered via UDP
+        cloud_devices = self.hass.data[DOMAIN][DATA_CLOUD].device_list
+        for dev_id in cloud_devices:
+            if dev_id not in self.config_entry.data[CONF_DEVICES] and dev_id not in devices:
+                devices[dev_id] = "unknown (from cloud)"
+                _LOGGER.info(
+                    "Added cloud device %s to device list (not discovered via UDP)",
+                    dev_id
+                )
+
         return self.async_show_form(
             step_id="add_device",
             data_schema=devices_schema(
-                devices, self.hass.data[DOMAIN][DATA_CLOUD].device_list
+                devices, cloud_devices
             ),
             errors=errors,
         )
