@@ -233,6 +233,9 @@ class TuyaCloudApiOEM(CloudApi):
             "model": model,
             "name": dev["name"],
             "local_key": dev["localKey"],
+            "ip": dev.get("ip", ""),
+            "uuid": dev.get("uuid", ""),
+            "online": dev.get("isOnline", False),
         }
 
     @staticmethod
